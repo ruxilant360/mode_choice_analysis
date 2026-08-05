@@ -1,0 +1,12 @@
+# Ignore everything
+*
+
+# But allow these back in
+!*.py
+!*.ipynb
+!.gitignore
+!README.md
+
+# If you want specific subfolders too, re-include the folder itself first
+!scripts/
+!scripts/**
