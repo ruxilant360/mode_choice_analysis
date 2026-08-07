@@ -1,5 +1,6 @@
 # Ignore everything
 *
+raw_dataset/
 
 # But allow these back in
 !*.py
