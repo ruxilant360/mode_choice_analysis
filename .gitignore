@@ -1,14 +1,33 @@
-# Ignore everything
-*
+# --- Virtual environments ---
+jupyter-env/
+venv/
+.venv/
+env/
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- Python bytecode/caches ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Packaging / build artifacts ---
+*.egg-info/
+dist/
+build/
+
+# --- Environment / secrets ---
+.env
+.env.*
+
+# --- OS / editor cruft ---
+.DS_Store
+.vscode/
+.idea/
+
+# --- Data (uncomment if your data files are large or shouldn't be versioned) ---
 raw_dataset/
-
-
-# But allow these back in
-!*.py
-!*.ipynb
-!.gitignore
-!README.md
-
-# If you want specific subfolders too, re-include the folder itself first
-!scripts/
-!scripts/**
+trainable_data/
+*.csv
+*.parquet
