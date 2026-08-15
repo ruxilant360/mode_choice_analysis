@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-from sklearn.utils.class_weight import compute_sample_weight
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
+from sklearn.utils.class_weight import compute_sample_weight, compute_class_weight
 from sklearn.compose import ColumnTransformer
 import joblib
 import mlflow
@@ -45,7 +45,7 @@ def get_sample_weights(y: np.ndarray, method:str) -> np.ndarray:
     return sample_weights 
 
 def map_label(target):
-    unique_labels = set(target.values())
+    unique_labels = target.unique()
    # map_dict = {1:'car', 2: 'pickup-truck' , 3: 'rec-car',4: 'pickup-truck' , 6: 'rec-car' , 7: 'motorcycle' , 8: 'public-bus' , 9: 'school-bus' ,10: 'street-car' , 11: 'subway' , 12: 'comm-rail' ,
     #13: 'amtrak' , 14: 'airplane' , 15: 'taxi' , 16: 'ride-share' , 17: 'paratransit' , 18: 'bicycle' , 
     #19:'e-scooter', 20:'walked', 21: 'noneabove' }
@@ -64,9 +64,9 @@ def get_class_weights(y: np.ndarray, method: str = "balanced", beta: float = 0.9
     classes = np.unique(y)
  
     if method == "balanced":
-        weights = compute_sample_weight(class_weight="balanced", classes=classes, y=y)
+        weights = compute_class_weight(class_weight="balanced", classes=classes, y=y)
         return {int(c): float(w) for c, w in zip(classes, weights)}
- 
+
     if method == "effective":
         counts = np.array([np.sum(y == c) for c in classes], dtype=np.float64)
         effective_num = 1.0 - np.power(beta, counts)
@@ -81,7 +81,7 @@ def get_class_weights(y: np.ndarray, method: str = "balanced", beta: float = 0.9
 
 
 def process_data_NN(
-    df: pd.DataFrame, target_col: str , target_map: dict, process_obect: ColumnTransformer | None = None):
+    df: pd.DataFrame, target_col: str , target_map: dict, process_object: ColumnTransformer | None = None):
     """
     preprocesses my data and returns it in addition to the preprocessor for testing
     """

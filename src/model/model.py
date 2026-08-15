@@ -6,7 +6,7 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.utils.class_weight import compute_class_weight
 import tensorflow as tf
 
-def custom_Net(num_classes:int, learning_rate: float) -> tf.keras.Model:
+def custom_Net(input_dim: int, num_classes: int, learning_rate: float) -> tf.keras.Model:
     """
     builds model to predict classes, compiled with special metrics from tensorflow 
     """

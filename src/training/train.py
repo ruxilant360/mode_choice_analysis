@@ -169,6 +169,8 @@ def train_NN(
     mlflow.set_experiment(experiment_name)
     mlflow.tensorflow.autolog(log_models=False)
     model_fold_dict = {}
+    fold_thresholds = {}
+    macro_f1s = {}
 
     with mlflow.start_run(run_name="cv_parent") as parent_run:
         mlflow.log_params(
@@ -229,7 +231,7 @@ def train_NN(
 
                 best_val_loss = min(history.history["val_loss"])
                 mlflow.log_metric("best_val_loss", best_val_loss)
-                mlflow.tensorflow.log_model(model, artifcat_path=f"model_Fold{fold_idx}")
+                mlflow.tensorflow.log_model(model, name=f"model_Fold{fold_idx}")
 
                 model_fold_dict[fold_idx] = model
 
@@ -268,11 +270,10 @@ def train_NN(
                 mlflow.log_metric(f"Fold {fold_idx} macro_f1", report["macro avg"]["f1-score"])
                 mlflow.log_metric(f"Fold {fold_idx} weighted_f1", report["weighted avg"]["f1-score"])
 
+                fold_thresholds[fold_idx] = T
+                macro_f1s[fold_idx] = report["macro avg"]["f1-score"]
 
-               
-        
-                    
-                                
+        mlflow.log_metric("cv_macro_f1_mean", np.mean(list(macro_f1s.values())))
+        mlflow.log_metric("cv_macro_f1_std", np.std(list(macro_f1s.values())))
 
-                
-            
+    return model_fold_dict, fold_thresholds
