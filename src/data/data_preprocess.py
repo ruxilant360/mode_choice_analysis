@@ -9,8 +9,8 @@ import joblib
 import mlflow
 from pathlib import Path
 
-def load_dataset(memory):
-    return pd.read_csv('final_data.csv', low_memory=memory)
+def load_dataset(data_path ,memory):
+    return pd.read_csv(data_path, low_memory=memory)
 
 def process_data_xgboost(df: pd.DataFrame, target : str ):
 
@@ -75,9 +75,6 @@ def get_class_weights(y: np.ndarray, method: str = "balanced", beta: float = 0.9
         return {int(c): float(w) for c, w in zip(classes, weights)}
  
     raise ValueError("method must be 'balanced' or 'effective'")
- 
-
-
 
 
 def process_data_NN(

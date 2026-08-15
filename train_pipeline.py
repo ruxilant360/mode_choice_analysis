@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import argparse
 
 import mlflow
 
@@ -59,11 +60,12 @@ def train_nn_stage(df):
     return model_fold_dict, fold_thresholds
 
 
-def main():
+def main(args):
     mlflow.set_tracking_uri(f"sqlite:///{(NOTEBOOKS_DIR / 'mlflow.db').as_posix()}")
 
-    os.chdir(NOTEBOOKS_DIR)
-    df = load_dataset(True)
+    #os.chdir(NOTEBOOKS_DIR)
+
+    df = load_dataset(args.input, True)
 
     xgmodels, xgb_fold_thresholds = train_xgboost_stage(df)
     nn_models, nn_fold_thresholds = train_nn_stage(df)
@@ -75,4 +77,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="My script")
+    parser.add_argument("input", help='path to your dataset file')
+
+    args = parser.parse_args()
+    main(args)

@@ -234,7 +234,7 @@ def train_NN(
                 mlflow.tensorflow.log_model(model, name=f"model_Fold{fold_idx}")
 
                 model_fold_dict[fold_idx] = model
-
+                # Validation block
                 y_probs = model.predict(X_val)
                 y_preds = np.argmax(y_probs, axis=1)
                 num_classes = y_probs.shape[1]
@@ -260,15 +260,15 @@ def train_NN(
                 macro_pr_auc = np.mean(pr_auc_scores)
                 mlflow.log_metric(f"macro_pr_auc_{fold_idx}", macro_pr_auc)      
 
-                adjusted_proba = y_probs / np.clip(T, 1e-6, None)
-                y_pred_tuned = np.argmax(adjusted_proba, axis=1)
+                #adjusted_proba = y_probs / np.clip(T, 1e-6, None)
+                #y_pred_tuned = np.argmax(adjusted_proba, axis=1)
 
 
-                report = classification_report(y_val, y_pred_tuned, output_dict=True)
+                report = classification_report(y_val,y_preds ,output_dict=True)
                 
-                mlflow.log_metric(f"Fold {fold_idx}accuracy", report["accuracy"])
-                mlflow.log_metric(f"Fold {fold_idx} macro_f1", report["macro avg"]["f1-score"])
-                mlflow.log_metric(f"Fold {fold_idx} weighted_f1", report["weighted avg"]["f1-score"])
+                mlflow.log_metric("report_val_accuracy", report["accuracy"])
+                mlflow.log_metric("val_macro_f1", report["macro avg"]["f1-score"])
+                mlflow.log_metric("val_weighted_f1", report["weighted avg"]["f1-score"])
 
                 fold_thresholds[fold_idx] = T
                 macro_f1s[fold_idx] = report["macro avg"]["f1-score"]
@@ -277,3 +277,4 @@ def train_NN(
         mlflow.log_metric("cv_macro_f1_std", np.std(list(macro_f1s.values())))
 
     return model_fold_dict, fold_thresholds
+
