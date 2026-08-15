@@ -3,7 +3,7 @@ jupyter-env/
 venv/
 .venv/
 env/
-
+mlruns/
 # --- Jupyter ---
 .ipynb_checkpoints/
 
@@ -26,9 +26,9 @@ build/
 .vscode/
 .idea/
 
-# --- Data (uncomment if your data files are large or shouldn't be versioned) ---
+# --- Data ---
 raw_dataset/
 trainable_data/
 *.csv
 *.parquet
-.db
+*.db
