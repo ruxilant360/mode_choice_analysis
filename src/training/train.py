@@ -25,15 +25,28 @@ def train_xgboost(X, y , max_depth: int, n_estimators: int, lr: float, random_st
         "max_depth" : max_depth,
         "learning_rate" : lr,
         "random_state": random_state,
-        "enable_categorical" :True
+        "enable_categorical" :True,
+        "early_stopping_rounds":50,
+        "tree_method": "hist",
+        "n_jobs": -1,
     }
+    macro_f1s = {}
+    val_accs = {}
+    fold_thresholds = {}
         
 
     mlflow.set_experiment(experiment_name)
 
+    if mlflow.active_run():
+        mlflow.end_run()
+
     with mlflow.start_run(run_name="cv_parent") as parent_run:
-        mlflow.log_params(params)
-        xgmodels = {}
+        try:
+            mlflow.log_params(params)
+            xgmodels = {}
+        except Exception as e:
+            mlflow.end_run(status="FAILED")
+            raise
 
         for fold_idx, (train_idx, val_idx) in enumerate(skf.split(X, y), start=1):
             X_tr, X_val = X.iloc[train_idx], X.iloc[val_idx]
@@ -42,6 +55,7 @@ def train_xgboost(X, y , max_depth: int, n_estimators: int, lr: float, random_st
             sample_weights = weight_function(y_tr, method="balanced")
 
             with mlflow.start_run(run_name=f"fold_{fold_idx}", nested=True):
+
                 pr_auc_scores = []
                 mlflow.log_param('fold', fold_idx)
                 mlflow.log_dict(sample_weights, f"class_weights_fold_{fold_idx}.json")
@@ -50,11 +64,14 @@ def train_xgboost(X, y , max_depth: int, n_estimators: int, lr: float, random_st
 
                 mlflow.log_params(xgb_params)
 
-                veh_clf.fit(X_tr, y_tr, sample_weight=sample_weights)
+                veh_clf.fit(X_tr, y_tr, 
+                            sample_weight=sample_weights,
+                            eval_set = [(X_val, y_val)],
+                            verbose = False)
                 xgmodels[fold_idx] = veh_clf
 
-                y_pred = veh_clf.predict(X_val)
                 y_probs = veh_clf.predict_proba(X_val)
+                y_pred = np.argmax(y_probs, axis=1)
                 num_classes = y_probs.shape[1]
 
                 T = np.zeros(num_classes)
@@ -80,23 +97,33 @@ def train_xgboost(X, y , max_depth: int, n_estimators: int, lr: float, random_st
                 mlflow.log_metric(f"macro_pr_auc_{fold_idx}", macro_pr_auc)
                 #mlflow.log_metric(f"Thresholds_for_fold{fold_idx}", T)      
 
-                adjusted_proba = y_probs / np.clip(T, 1e-6, None)
-                y_pred_tuned = np.argmax(adjusted_proba, axis=1)
+                #adjusted_proba = y_probs / np.clip(T, 1e-6, None)
+                #y_pred_tuned = np.argmax(adjusted_proba, axis=1)
 
 
-                report = classification_report(y_val, y_pred_tuned, output_dict=True)
+                report = classification_report(y_val, y_pred, output_dict=True)
                 
-                mlflow.log_metric(f"Fold {fold_idx}accuracy", report["accuracy"])
-                mlflow.log_metric(f"Fold {fold_idx} macro_f1", report["macro avg"]["f1-score"])
-                mlflow.log_metric(f"Fold {fold_idx} weighted_f1", report["weighted avg"]["f1-score"])
+                mlflow.log_metric("val_accuracy", report["accuracy"])
+                mlflow.log_metric("val_macro_f1", report["macro avg"]["f1-score"])
+                mlflow.log_metric("val_weighted_f1", report["weighted avg"]["f1-score"])
+
+
+                macro_f1s[fold_idx] = report["macro avg"]["f1-score"]
+                fold_thresholds[fold_idx] = T
+                val_accs[fold_idx] = report["macro avg"]["f1-score"]
+
 
                 mlflow.xgboost.log_model(
                     xgb_model = veh_clf,
                     artifact_path = f"Fold_{fold_idx}_xgb_model",
-                    input_example = X_tr[:5],
                 )
+        mlflow.log_metric("cv_macro_f1_mean", np.mean(list(macro_f1s.values())))
+        mlflow.log_metric("cv_macro_f1_std", np.std(list(macro_f1s.values())))
+        mlflow.log_metric("cv_val_acc_mean", np.mean(list(val_accs.values())))
+        
 
-    return xgmodels            
+
+    return xgmodels, fold_thresholds          
 
 
 
@@ -123,13 +150,24 @@ def train_NN(
     y = np.asarray(y)
     num_classes = len(np.unique(y))
     input_dim = X.shape[1]
- 
+
+    gpus = tf.config.list_physical_devices("GPU")
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
+
+    if len(gpus) > 1:
+        strategy = tf.distribute.MirroredStrategy()
+    elif len(gpus) == 1:
+        strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
+    else:
+        strategy = tf.distribute.get_strategy()
+
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
- 
+
     mlflow.set_experiment(experiment_name)
-    mlflow.tensorflow.autolog(log_models=False)  
+    mlflow.tensorflow.autolog(log_models=False)
     model_fold_dict = {}
- 
+
     with mlflow.start_run(run_name="cv_parent") as parent_run:
         mlflow.log_params(
             {
@@ -140,6 +178,8 @@ def train_NN(
                 "class_weight_method": class_weight_method,
                 "num_classes": num_classes,
                 "input_dim": input_dim,
+                "num_gpus": len(gpus),
+                "distribute_strategy": type(strategy).__name__,
             }
         )
  
@@ -161,7 +201,8 @@ def train_NN(
                 mlflow.log_param("fold", fold_idx)
                 mlflow.log_dict(class_weights, f"class_weights_fold_{fold_idx}.json")
  
-                model = netfunction(input_dim, num_classes, learning_rate)
+                with strategy.scope():
+                    model = netfunction(input_dim, num_classes, learning_rate)
  
                 callbacks = [
                     tf.keras.callbacks.EarlyStopping(

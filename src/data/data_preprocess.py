@@ -5,8 +5,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.compose import ColumnTransformer
+import joblib
+import mlflow
+from pathlib import Path
 
-
+def load_dataset(memory):
+    return pd.read_csv('final_data.csv', low_memory=memory)
 
 def process_data_xgboost(df: pd.DataFrame, target : str ):
 
@@ -16,6 +20,15 @@ def process_data_xgboost(df: pd.DataFrame, target : str ):
     y = df[target] 
 
     y = le.fit_transform(y)
+
+    project_root = Path(__file__).resolve().parents[2]
+    save_path = project_root / "notebooks" / "xgb_lbl_enc.pkl"
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+
+    joblib.dump(le, save_path)
+
+    mlflow.log_artifact(str(save_path))
+
 
     cat_features = X.select_dtypes(include=["object", "category", "bool"]).columns
     X[cat_features] = X[cat_features].astype('category')
@@ -31,16 +44,18 @@ def get_sample_weights(y: np.ndarray, method:str) -> np.ndarray:
     sample_weights = compute_sample_weight(method, y)
     return sample_weights 
 
-map_dict = {1:'car', 2: 'van' , 3: 'suv',4: 'pickup-truck' , 6: 'rec-car' , 7: 'motorcycle' , 8: 'public-bus' , 9: 'school-bus' ,
-                               10: 'street-car' , 11: 'subway' , 12: 'comm-rail' ,
-                               13: 'amtrak' , 14: 'airplane' , 15: 'taxi' ,
-                               16: 'ride-share' , 17: 'paratransit' , 18: 'bicycle' , 
-                               19:'e-scooter', 20:'walked', 21: 'noneabove' }
+def map_label(target):
+    unique_labels = set(target.values())
+   # map_dict = {1:'car', 2: 'pickup-truck' , 3: 'rec-car',4: 'pickup-truck' , 6: 'rec-car' , 7: 'motorcycle' , 8: 'public-bus' , 9: 'school-bus' ,10: 'street-car' , 11: 'subway' , 12: 'comm-rail' ,
+    #13: 'amtrak' , 14: 'airplane' , 15: 'taxi' , 16: 'ride-share' , 17: 'paratransit' , 18: 'bicycle' , 
+    #19:'e-scooter', 20:'walked', 21: 'noneabove' }
 
-sort_keys = sorted(map_dict.keys())
-raw_to_tf = {raw_key : tf_index for tf_index, raw_key in enumerate(sort_keys)}
+    #sort_keys = sorted(map_dict.keys())
+    #raw_to_tf = {raw_key : tf_index for tf_index, raw_key in enumerate(sort_keys)}
 
-label_map = {tf_index : label for tf_index, label in enumerate(map_dict.values())}
+    label_map = {label: tf_index  for tf_index, label in enumerate(unique_labels)}
+
+    return label_map
 
 
 
