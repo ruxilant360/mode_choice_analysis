@@ -115,8 +115,10 @@ def train_xgboost(X, y , max_depth: int, n_estimators: int, lr: float, random_st
 
                 mlflow.xgboost.log_model(
                     xgb_model = veh_clf,
-                    artifact_path = f"Fold_{fold_idx}_xgb_model",
+                    name = f"Fold_{fold_idx}_xgb_model",
                 )
+
+            print(f"Finished_training_{fold_idx}")
         mlflow.log_metric("cv_macro_f1_mean", np.mean(list(macro_f1s.values())))
         mlflow.log_metric("cv_macro_f1_std", np.std(list(macro_f1s.values())))
         mlflow.log_metric("cv_val_acc_mean", np.mean(list(val_accs.values())))
