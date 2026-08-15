@@ -31,3 +31,4 @@ raw_dataset/
 trainable_data/
 *.csv
 *.parquet
+.db
