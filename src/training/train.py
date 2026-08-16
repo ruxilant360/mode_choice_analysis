@@ -217,7 +217,8 @@ def train_NN(
                     ),
                     MLflowEpochLogger()
                 ]
- 
+
+                print(f"Started Train fold {fold_idx}")
                 history = model.fit(
                     X_tr,
                     y_tr,
@@ -231,7 +232,7 @@ def train_NN(
 
                 best_val_loss = min(history.history["val_loss"])
                 mlflow.log_metric("best_val_loss", best_val_loss)
-                mlflow.tensorflow.log_model(model, name=f"model_Fold{fold_idx}")
+                mlflow.tensorflow.log_model(model, f"model_fold_{fold_idx}")
 
                 model_fold_dict[fold_idx] = model
                 # Validation block

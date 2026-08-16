@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import argparse
+import joblib
 
 import mlflow
 
@@ -47,9 +48,9 @@ def train_nn_stage(df):
     model_fold_dict, fold_thresholds = train_NN(
         X_proc,
         y_train,
-        n_splits=5,
-        epochs=50,
-        batch_size=64,
+        n_splits=10,
+        epochs=20,
+        batch_size=256,
         learning_rate=1e-3,
         class_weight_method="balanced",
         experiment_name="nn_experiment",
@@ -61,24 +62,38 @@ def train_nn_stage(df):
 
 
 def main(args):
-    mlflow.set_tracking_uri(f"sqlite:///{(NOTEBOOKS_DIR / 'mlflow.db').as_posix()}")
+    #mlflow.set_tracking_uri(f"sqlite:///{(NOTEBOOKS_DIR / 'mlflow.db').as_posix()}")
 
     #os.chdir(NOTEBOOKS_DIR)
 
     df = load_dataset(args.input, True)
 
-    xgmodels, xgb_fold_thresholds = train_xgboost_stage(df)
+    #xgmodels, xgb_fold_thresholds = train_xgboost_stage(df)
     nn_models, nn_fold_thresholds = train_nn_stage(df)
 
     return {
-        "xgboost": {"models": xgmodels, "fold_thresholds": xgb_fold_thresholds},
+        #"xgboost": {"models": xgmodels, "fold_thresholds": xgb_fold_thresholds},
         "nn": {"models": nn_models, "fold_thresholds": nn_fold_thresholds},
     }
 
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="My script")
-    parser.add_argument("input", help='path to your dataset file')
+    parser.add_argument("--input", 
+    default = "s3://personal-ds-data-bucket/final_data.csv",
+    help="path to your saved data")
+    parser.add_argument("--output", default = "artifacts",
+    help = "parent folder only to save outputs")
 
+    
     args = parser.parse_args()
-    main(args)
+    results =  main(args)
+
+    backup_dir = Path("artifacts/nn_models")
+    backup_dir.mkdir(parents=True, exist_ok=True)
+
+    # Keras models under the Functional API pickle more reliably than subclassed ones
+    for fold_idx, model in results["nn"]["models"].items():
+        model.save(backup_dir / f"nn_fold_{fold_idx}.keras")
+
