@@ -4,6 +4,7 @@ venv/
 .venv/
 env/
 mlruns/
+artifacts/
 # --- Jupyter ---
 .ipynb_checkpoints/
 
@@ -32,3 +33,7 @@ trainable_data/
 *.csv
 *.parquet
 *.db
+*.h5
+*.joblib
+*.pkl
+
