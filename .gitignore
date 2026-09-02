@@ -33,4 +33,6 @@ trainable_data/
 *.parquet
 *.db
 
+*.json
+
 
