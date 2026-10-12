@@ -1,4 +1,4 @@
-# mode_choice
+# Mode_choice
 
 Predicting the **transport mode** of a trip from trip, person and household
 attributes in the 2017 U.S. National Household Travel Survey (NHTS). The
