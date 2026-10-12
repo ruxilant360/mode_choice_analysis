@@ -151,19 +151,3 @@ Configure it with environment variables or a `.env` file:
 The tool's input contract is still a placeholder, so the expected feature
 names have not been enforced yet.
 
-## Status / known issues
-
-- `src/model/__init__.py` exports `transport_net`, but `model.py` defines
-  `custom_Net`, which is the name `train_pipeline.py` imports. Update the
-  `__init__` before running the pipeline.
-- `server.py` and `client.py` are a FastAPI service (`/health`, `/predict`) and
-  CLI client adapted from a loan-risk project. They import modules that don't
-  exist in this repo yet (`src.data_preprocess`, `src.xgbmodel`,
-  `src.manual_llm_agent`), so they need to be ported to the mode-choice model
-  before they will run.
-- `process_data_xgboost` saves the label encoder to `notebooks/xgb_lbl_enc.pkl`
-  and calls `mlflow.log_artifact` outside an active run. This starts an
-  implicit MLflow run.
-- The per-class F1 thresholds are computed and returned but not yet applied
-  at prediction time.
-- There is no root `requirements.txt`. Only the agent has a pinned dependency list.
